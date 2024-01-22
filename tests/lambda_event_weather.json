@@ -1,0 +1,28 @@
+{
+    "agent": {
+        "alias": "XYZ123ABC0",
+        "name": "outfit_assistant",
+        "version": "DRAFT",
+        "id": "ABC123ABC0"
+    },
+    "sessionId": "1234567890",
+    "sessionAttributes": {},
+    "promptSessionAttributes": {},
+    "inputText": "I am in Oslo today.  Given the current weather, what should I wear today?",
+    "apiPath": "/getCurrentWeather",
+    "httpMethod": "GET",
+    "messageVersion": "1.0",
+    "actionGroup": "agent_location_services_group",
+    "parameters": [
+      {
+        "name": "longitude",
+        "type": "number",
+        "value": "10.75"
+      },
+      {
+        "name": "latitude",
+        "type": "number",
+        "value": "59.91234"
+      }
+    ]
+  }

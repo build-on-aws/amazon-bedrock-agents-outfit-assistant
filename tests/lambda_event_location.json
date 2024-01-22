@@ -1,0 +1,23 @@
+{
+    "agent": {
+      "alias": "XYZ123ABC0",
+      "name": "outfit_assistant",
+      "version": "DRAFT",
+      "id": "ABC123ABC0"
+    },
+    "sessionId": "1234567890",
+    "sessionAttributes": {},
+    "promptSessionAttributes": {},
+    "inputText": "What time is it in Oslo?",
+    "apiPath": "/getCoordinates",
+    "httpMethod": "GET",
+    "messageVersion": "1.0",
+    "actionGroup": "agent_location_services_group",
+    "parameters": [
+      {
+        "name": "placeName",
+        "type": "string",
+        "value": "Oslo"
+      }
+    ]
+  }

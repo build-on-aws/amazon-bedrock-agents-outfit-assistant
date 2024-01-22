@@ -1,0 +1,153 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Location Information Service API",
+        "version": "1.0.0",
+        "description": "APIs for retrieving information about a given location including coordinates, current time, and weather."
+    },
+    "paths": {
+        "/getCoordinates": {
+            "get": {
+                "summary": "Get Coordinates from Place Name",
+                "description": "Retrieve latitude and longitude for a given place name.",
+                "operationId": "getCoordinates",
+                "parameters": [
+                    {
+                        "name": "placeName",
+                        "in": "query",
+                        "description": "Name of the place to find coordinates for",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response with coordinates",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "latitude": {
+                                            "type": "number",
+                                            "format": "float",
+                                            "description": "Latitude of the location"
+                                        },
+                                        "longitude": {
+                                            "type": "number",
+                                            "format": "float",
+                                            "description": "Longitude of the location"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/getCurrentTime": {
+            "get": {
+                "summary": "Get Current Time for Location",
+                "description": "Get the current local time for a specified latitude and longitude.",
+                "operationId": "getCurrentTime",
+                "parameters": [
+                    {
+                        "name": "latitude",
+                        "in": "query",
+                        "description": "Latitude of the location for which current time is requested",
+                        "required": true,
+                        "schema": {
+                            "type": "number",
+                            "format": "float"
+                        }
+                    },
+                    {
+                        "name": "longitude",
+                        "in": "query",
+                        "description": "Longitude of the location for which current time is requested",
+                        "required": true,
+                        "schema": {
+                            "type": "number",
+                            "format": "float"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Current local time of the specified location",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string",
+                                    "description": "Local time in ISO 8601 format"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/getCurrentWeather": {
+            "get": {
+                "summary": "Get Current Weather for Location",
+                "description": "Get the current weather details for a specified latitude and longitude, including current temperature, today's maximum temperature, and humidity level.",
+                "operationId": "getCurrentWeather",
+                "parameters": [
+                    {
+                        "name": "latitude",
+                        "in": "query",
+                        "description": "Latitude of the location for which current weather is requested",
+                        "required": true,
+                        "schema": {
+                            "type": "number",
+                            "format": "float"
+                        }
+                    },
+                    {
+                        "name": "longitude",
+                        "in": "query",
+                        "description": "Longitude of the location for which current weather is requested",
+                        "required": true,
+                        "schema": {
+                            "type": "number",
+                            "format": "float"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Current weather details of the specified location",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "currentTemperature": {
+                                            "type": "number",
+                                            "description": "Current temperature in Celsius"
+                                        },
+                                        "maxTemperature": {
+                                            "type": "number",
+                                            "description": "Today's maximum temperature in Celsius"
+                                        },
+                                        "humidity": {
+                                            "type": "number",
+                                            "description": "Humidity level as a percentage"
+                                        },
+                                        "description": {
+                                            "type": "string",
+                                            "description": "A description of the current weather"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
