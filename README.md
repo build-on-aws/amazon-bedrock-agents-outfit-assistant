@@ -20,6 +20,8 @@ In this demo, you will use Amazon Bedrock Agents to create a solution that enabl
 
 This architecture could be easily extended to work with any number of APIs or data sources.  If you are able to connect to your data from an Amazon Lambda function, then it can be used with Amazon Bedrock Agents. 
 
+![Outfit Assistant Architecture Diagram](/images/outfit-assistant-diag-1.png)
+
 ## Amazon Location Service
 
 Within this demo, the Lambda function you will deploy uses Amazon Location Service to lookup the location of place names, and the find the time zone for a given location.
