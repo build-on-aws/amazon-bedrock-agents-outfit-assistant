@@ -1,0 +1,344 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Description: >
+  This template demonstrates the deployment of Agents for Amazon Bedrock using AWS Serverless Application Model (SAM).
+
+  Note: The demo relies on you having an account with OpenWeatherMap, and an API key to access the Weather service.
+  This service is available on the OpenWeatherMap free plan. (https://openweathermap.org/current) Please review any 
+  license terms applicable to the service with your legal team and confirm that your use case complies with the terms 
+  before proceeding.
+
+Parameters:
+
+  OpenWeatherAPIKey:
+    # The demo relies on you having an account with OpenWeatherMap, and an API key to access the Weather service. 
+    # This service is available on the OpenWeatherMap free plan. (https://openweathermap.org/current)
+    Type: String
+    Description: OpenWeather API Key
+
+  FoundationModel: 
+    Type: String
+    Description: Foundation model used by the agent
+    Default: "anthropic.claude-v2:1"
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 128
+
+Resources:
+  # This function handles and routes requests from the agent's action group.  In this demo this single function 
+  # handles all requests and makes calls to supporting services.
+  AgentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: func_agent/
+      Handler: app.lambda_handler
+      Runtime: python3.11
+      Architectures:
+        - x86_64
+      Role: !GetAtt AgentFunctionRole.Arn
+      Environment:
+        Variables:
+          OPENWEATHER_API_KEY: !Ref OpenWeatherAPIKey
+          PLACE_INDEX_NAME : !Ref LocationServicesPlacesIndex
+
+  # An IAM role specifying the permissions provided to the Lambda function.
+  AgentFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: AgentFunctionRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: AgentFunctionPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+              - Effect: Allow
+                Action:
+                  - geo:SearchPlaceIndexForText
+                  - geo:SearchPlaceIndexForPosition
+                Resource: !GetAtt LocationServicesPlacesIndex.Arn
+
+  # A resource policy for the Lamba Function that enables the agent to call the function. 
+  AgentFunctionInvocationPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt AgentFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref 'AWS::AccountId'
+      SourceArn: !GetAtt BedrockAgent.AgentArn
+
+  # The Lambda Function uses the Amazon Location Service for location information. 
+  LocationServicesPlacesIndex: 
+    Type: AWS::Location::PlaceIndex
+    Properties:
+      DataSource: Here
+      DataSourceConfiguration: 
+        IntendedUse: SingleUse
+      IndexName:
+        !Sub 
+          - "place.index.${Segment}"
+          - Segment: !Select [0, !Split ["-", !Select [2, !Split ["/", !Ref "AWS::StackId"]]]]
+
+  # The Agent for Amazon Bedrock
+  BedrockAgent:
+    Type: AWS::Bedrock::Agent
+    Properties:
+
+      ActionGroups: 
+        # In order for the agent to be able to request the user for additional information when trying to 
+        # complete a task, you must specifiy an action group with a ParentActionGroupSignature of AMAZON.UserInput
+        - ActionGroupName: UserInputAction
+          ParentActionGroupSignature: AMAZON.UserInput
+            
+        # This action group defines the 'tools' that the agent can access.
+        - ActionGroupName: LocationActionGroup
+          ActionGroupExecutor: 
+            Lambda: !GetAtt AgentFunction.Arn
+          ActionGroupState: ENABLED
+
+          # Define OpenAPI schemas for your agent's action groups in Amazon Bedrock
+          # https://docs.aws.amazon.com/bedrock/latest/userguide/agents-api-schema.html
+          ApiSchema: 
+            Payload: >
+              {
+                "openapi": "3.0.0",
+                "info": {
+                    "title": "Location Information Service API",
+                    "version": "1.0.0",
+                    "description": "APIs for retrieving information about a given location including coordinates, current time, and weather."
+                },
+                "paths": {
+                    "/getCoordinates": {
+                        "get": {
+                            "summary": "Get Coordinates from Place Name",
+                            "description": "Retrieve latitude and longitude for a given place name.",
+                            "operationId": "getCoordinates",
+                            "parameters": [
+                                {
+                                    "name": "placeName",
+                                    "in": "query",
+                                    "description": "Name of the place to find coordinates for",
+                                    "required": true,
+                                    "schema": {
+                                        "type": "string"
+                                    }
+                                }
+                            ],
+                            "responses": {
+                                "200": {
+                                    "description": "Successful response with coordinates",
+                                    "content": {
+                                        "application/json": {
+                                            "schema": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "latitude": {
+                                                        "type": "number",
+                                                        "format": "float",
+                                                        "description": "Latitude of the location"
+                                                    },
+                                                    "longitude": {
+                                                        "type": "number",
+                                                        "format": "float",
+                                                        "description": "Longitude of the location"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "/getCurrentTime": {
+                        "get": {
+                            "summary": "Get Current Time for Location",
+                            "description": "Get the current local time for a specified latitude and longitude.",
+                            "operationId": "getCurrentTime",
+                            "parameters": [
+                                {
+                                    "name": "latitude",
+                                    "in": "query",
+                                    "description": "Latitude of the location for which current time is requested",
+                                    "required": true,
+                                    "schema": {
+                                        "type": "number",
+                                        "format": "float"
+                                    }
+                                },
+                                {
+                                    "name": "longitude",
+                                    "in": "query",
+                                    "description": "Longitude of the location for which current time is requested",
+                                    "required": true,
+                                    "schema": {
+                                        "type": "number",
+                                        "format": "float"
+                                    }
+                                }
+                            ],
+                            "responses": {
+                                "200": {
+                                    "description": "Current local time of the specified location",
+                                    "content": {
+                                        "application/json": {
+                                            "schema": {
+                                                "type": "string",
+                                                "description": "Local time in ISO 8601 format"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "/getCurrentWeather": {
+                        "get": {
+                            "summary": "Get Current Weather for Location",
+                            "description": "Get the current weather details for a specified latitude and longitude, including current temperature, today's maximum temperature, and humidity level.",
+                            "operationId": "getCurrentWeather",
+                            "parameters": [
+                                {
+                                    "name": "latitude",
+                                    "in": "query",
+                                    "description": "Latitude of the location for which current weather is requested",
+                                    "required": true,
+                                    "schema": {
+                                        "type": "number",
+                                        "format": "float"
+                                    }
+                                },
+                                {
+                                    "name": "longitude",
+                                    "in": "query",
+                                    "description": "Longitude of the location for which current weather is requested",
+                                    "required": true,
+                                    "schema": {
+                                        "type": "number",
+                                        "format": "float"
+                                    }
+                                }
+                            ],
+                            "responses": {
+                                "200": {
+                                    "description": "Current weather details of the specified location",
+                                    "content": {
+                                        "application/json": {
+                                            "schema": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "currentTemperature": {
+                                                        "type": "number",
+                                                        "description": "Current temperature in Celsius"
+                                                    },
+                                                    "maxTemperature": {
+                                                        "type": "number",
+                                                        "description": "Today's maximum temperature in Celsius"
+                                                    },
+                                                    "humidity": {
+                                                        "type": "number",
+                                                        "description": "Humidity level as a percentage"
+                                                    },
+                                                    "description": {
+                                                        "type": "string",
+                                                        "description": "A description of the current weather"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+              }
+          Description: >
+            Location based services:
+              - getCoordinates
+              - getCurrentTime
+              - getCurrentWeather
+            
+      AgentName: OutfitAssistantAgent
+      AgentResourceRoleArn: !GetAtt BedrockAgentRole.Arn
+      AutoPrepare: true
+      Description: >
+        An agent to help decide what to wear today, given the weather and the time.
+      FoundationModel: !Ref FoundationModel
+      IdleSessionTTLInSeconds: 1800
+      Instruction: >
+        You are a personal assistant. You are friendly, polite and casual. 
+
+        You help with deciding what outfit to wear considering the current time of day, and the weather. You must find out, or have been told my location before you can help me. Unless I have told you otherwise, use the time of day to predict the activity I might be doing. 
+
+        You must also consider the weather when suggesting an outfit.  You must consider the description of the weather, the currect temperature, and the humidity levels. 
+
+        You may suggest suitable accessories based on the weather too.
+
+        While you will use lattitude and longitude to get details of the location I am in, you must not reply to me with these details.  The latitude and longitude are just for you to work in the background. 
+
+        If I don't ask a specific question, or I ask a question you don't know the answer to, assume that I am asking for fassion advice and select an outfit based from what you know already.  If you don't know key details, then ask me for them.
+
+        Make sure your answers are fun!
+
+  # An IAM role specifying the permissions provided to the agent.
+  BedrockAgentRole:
+    Type: AWS::IAM::Role
+    Properties:
+      # The role must have the prefix of `AmazonBedrockExecutionRoleForAgents_`
+      RoleName: AmazonBedrockExecutionRoleForAgents_ABC123
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - bedrock.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: BedrockAgentFunctionPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: !GetAtt AgentFunction.Arn
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource: 
+                  !Sub "arn:aws:bedrock:us-east-1::foundation-model/${FoundationModel}"
+
+  BedrockAgentAlias:
+    Type: AWS::Bedrock::AgentAlias
+    Properties:
+      AgentAliasName: "AgentAlias"
+      AgentId: !GetAtt BedrockAgent.AgentId
+      Description: Created by CFN
+
+
+Outputs:
+  BedrockAgent: 
+    Description: Bedrock Agent ARN
+    Value: !Ref BedrockAgent
+
