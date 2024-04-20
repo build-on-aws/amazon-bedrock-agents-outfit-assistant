@@ -35,7 +35,7 @@ Resources:
     Properties:
       CodeUri: func_agent/
       Handler: app.lambda_handler
-      Runtime: python3.11
+      Runtime: python3.9
       Architectures:
         - x86_64
       Role: !GetAtt AgentFunctionRole.Arn
