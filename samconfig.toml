@@ -21,7 +21,7 @@ s3_prefix = "OutfitAssistant3"
 region = "us-east-1"
 image_repositories = []
 stack_name = "OutfitAssistant3"
-parameter_overrides = "OpenWeatherAPIKey=\"b0b3784360db4297ff087a6934098db6\" FoundationModel=\"anthropic.claude-v2:1\""
+parameter_overrides = FoundationModel=\"anthropic.claude-v2:1\""
 
 [default.package.parameters]
 resolve_s3 = true

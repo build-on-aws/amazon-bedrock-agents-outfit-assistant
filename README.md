@@ -28,7 +28,7 @@ Deploy this project using the SAM CLI:
 
 ```
 > sam build
-> sam deploy --guided --capabilities='CAPABILITY_NAMED_IAM'
+> sam deploy --guided
 ```
 
 You will be prompted for information as the project is deployed: 
