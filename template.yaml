@@ -327,7 +327,7 @@ Resources:
                 Action:
                   - bedrock:InvokeModel
                 Resource: 
-                  !Sub "arn:aws:bedrock:us-east-1::foundation-model/${FoundationModel}"
+                  !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/${FoundationModel}"
 
   BedrockAgentAlias:
     Type: AWS::Bedrock::AgentAlias

@@ -34,7 +34,7 @@ Deploy this project using the SAM CLI:
 You will be prompted for information as the project is deployed: 
 
 - OpenWeatherAPIKey - A free API key from OpenWeatherMap
-- FoundationModel - The ID of the Amazon Bedrock foundation model to use.  (This currently defaults to `anthropic.claude-v2:1`)
+- FoundationModel - The ID of the Amazon Bedrock foundation model to use.  (This currently defaults to `anthropic.claude-v2:1` Please ensure you have enabled access to this model in the region you are deploying to.)
 
 ### Testing
 
