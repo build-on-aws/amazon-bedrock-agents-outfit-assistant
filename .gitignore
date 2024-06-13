@@ -1,4 +1,5 @@
 .DS_Store
+.aws-sam
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -137,3 +138,5 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+samconfig.toml

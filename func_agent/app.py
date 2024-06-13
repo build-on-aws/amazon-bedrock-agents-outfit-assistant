@@ -39,35 +39,35 @@ from weather_finder import WeatherFinder
 def lambda_handler(event, context):
     print(event)
     
-    api_path = event['apiPath']
+    agent = event['agent']
+    actionGroup = event['actionGroup']
+    function = event['function']
     parameters = {param['name']: param['value'] for param in event['parameters']}
 
-    response_body = handle_request(api_path, parameters)
-
+    responseBody =  {
+        "TEXT": {
+            "body": json.dumps(handle_request(function, parameters))
+        }
+    }
     action_response = {
-        'actionGroup': event['actionGroup'],
-        'apiPath': api_path,
-        'httpMethod': event['httpMethod'],
-        'httpStatusCode': 200,
-        'responseBody': {'application/json': {'body': json.dumps(response_body)}}
+        'actionGroup': actionGroup,
+        'function': function,
+        'functionResponse': {
+            'responseBody': responseBody
+        }
     }
 
-    session_attributes = event.get('sessionAttributes', {})
-    prompt_session_attributes = event.get('promptSessionAttributes', {})
+    function_response = {'response': action_response, 'messageVersion': event['messageVersion']}
+    print("Response: {}".format(function_response))
 
-    return {
-        'messageVersion': '1.0',
-        'response': action_response,
-        'sessionAttributes': session_attributes,
-        'promptSessionAttributes': prompt_session_attributes
-    }
+    return function_response
 
-def handle_request(api_path, parameters):
-    if api_path == "/getCoordinates":
+def handle_request(function, parameters):
+    if function == "getCoordinates":
         return CoordinatesFinder.get_coordinates(parameters.get('placeName'))
-    elif api_path == "/getCurrentTime":
+    elif function == "getCurrentTime":
         return TimeFinder.get_current_time(parameters.get('latitude'), parameters.get('longitude'))
-    elif api_path == "/getCurrentWeather":
+    elif function == "getCurrentWeather":
         return WeatherFinder.get_current_weather(parameters.get('latitude'), parameters.get('longitude'))
     else:
         return {"error": "Invalid API path"}

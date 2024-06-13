@@ -20,7 +20,7 @@ Parameters:
   FoundationModel: 
     Type: String
     Description: Foundation model used by the agent
-    Default: "anthropic.claude-v2:1"
+    Default: "anthropic.claude-3-haiku-20240307-v1:0"
 
 Globals:
   Function:
@@ -48,7 +48,7 @@ Resources:
   AgentFunctionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: AgentFunctionRole
+      RoleName: !Sub AgentFunctionRole-${AWS::StackName}
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -59,7 +59,7 @@ Resources:
             Action:
               - sts:AssumeRole
       Policies:
-        - PolicyName: AgentFunctionPolicy
+        - PolicyName: !Sub LambdaAgentFunctionPolicy-${AWS::StackName}
           PolicyDocument:
             Version: 2012-10-17
             Statement:
@@ -109,168 +109,46 @@ Resources:
           ParentActionGroupSignature: AMAZON.UserInput
             
         # This action group defines the 'tools' that the agent can access.
-        - ActionGroupName: LocationActionGroup
+        - ActionGroupName: AgentActionGroup
           ActionGroupExecutor: 
             Lambda: !GetAtt AgentFunction.Arn
           ActionGroupState: ENABLED
 
-          # Define OpenAPI schemas for your agent's action groups in Amazon Bedrock
-          # https://docs.aws.amazon.com/bedrock/latest/userguide/agents-api-schema.html
-          ApiSchema: 
-            Payload: >
-              {
-                "openapi": "3.0.0",
-                "info": {
-                    "title": "Location Information Service API",
-                    "version": "1.0.0",
-                    "description": "APIs for retrieving information about a given location including coordinates, current time, and weather."
-                },
-                "paths": {
-                    "/getCoordinates": {
-                        "get": {
-                            "summary": "Get Coordinates from Place Name",
-                            "description": "Retrieve latitude and longitude for a given place name.",
-                            "operationId": "getCoordinates",
-                            "parameters": [
-                                {
-                                    "name": "placeName",
-                                    "in": "query",
-                                    "description": "Name of the place to find coordinates for",
-                                    "required": true,
-                                    "schema": {
-                                        "type": "string"
-                                    }
-                                }
-                            ],
-                            "responses": {
-                                "200": {
-                                    "description": "Successful response with coordinates",
-                                    "content": {
-                                        "application/json": {
-                                            "schema": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "latitude": {
-                                                        "type": "number",
-                                                        "format": "float",
-                                                        "description": "Latitude of the location"
-                                                    },
-                                                    "longitude": {
-                                                        "type": "number",
-                                                        "format": "float",
-                                                        "description": "Longitude of the location"
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "/getCurrentTime": {
-                        "get": {
-                            "summary": "Get Current Time for Location",
-                            "description": "Get the current local time for a specified latitude and longitude.",
-                            "operationId": "getCurrentTime",
-                            "parameters": [
-                                {
-                                    "name": "latitude",
-                                    "in": "query",
-                                    "description": "Latitude of the location for which current time is requested",
-                                    "required": true,
-                                    "schema": {
-                                        "type": "number",
-                                        "format": "float"
-                                    }
-                                },
-                                {
-                                    "name": "longitude",
-                                    "in": "query",
-                                    "description": "Longitude of the location for which current time is requested",
-                                    "required": true,
-                                    "schema": {
-                                        "type": "number",
-                                        "format": "float"
-                                    }
-                                }
-                            ],
-                            "responses": {
-                                "200": {
-                                    "description": "Current local time of the specified location",
-                                    "content": {
-                                        "application/json": {
-                                            "schema": {
-                                                "type": "string",
-                                                "description": "Local time in ISO 8601 format"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "/getCurrentWeather": {
-                        "get": {
-                            "summary": "Get Current Weather for Location",
-                            "description": "Get the current weather details for a specified latitude and longitude, including current temperature, today's maximum temperature, and humidity level.",
-                            "operationId": "getCurrentWeather",
-                            "parameters": [
-                                {
-                                    "name": "latitude",
-                                    "in": "query",
-                                    "description": "Latitude of the location for which current weather is requested",
-                                    "required": true,
-                                    "schema": {
-                                        "type": "number",
-                                        "format": "float"
-                                    }
-                                },
-                                {
-                                    "name": "longitude",
-                                    "in": "query",
-                                    "description": "Longitude of the location for which current weather is requested",
-                                    "required": true,
-                                    "schema": {
-                                        "type": "number",
-                                        "format": "float"
-                                    }
-                                }
-                            ],
-                            "responses": {
-                                "200": {
-                                    "description": "Current weather details of the specified location",
-                                    "content": {
-                                        "application/json": {
-                                            "schema": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "currentTemperature": {
-                                                        "type": "number",
-                                                        "description": "Current temperature in Celsius"
-                                                    },
-                                                    "maxTemperature": {
-                                                        "type": "number",
-                                                        "description": "Today's maximum temperature in Celsius"
-                                                    },
-                                                    "humidity": {
-                                                        "type": "number",
-                                                        "description": "Humidity level as a percentage"
-                                                    },
-                                                    "description": {
-                                                        "type": "string",
-                                                        "description": "A description of the current weather"
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-              }
+          FunctionSchema:
+            Functions:
+
+              - Description: Retrieve latitude and longitude for a given place name.
+                Name: getCoordinates
+                Parameters:
+                  placeName:
+                    Description: "Name of the place to find coordinates for"
+                    Required: true
+                    Type: string
+          
+              - Description: Get the current local time for a specified latitude and longitude.
+                Name: getCurrentTime
+                Parameters:
+                  latitude:
+                    Description: "Latitude of the location for which current time is requested"
+                    Required: true
+                    Type: number
+                  longitude:
+                    Description: "Longitude of the location for which current time is requested"
+                    Required: true
+                    Type: number
+
+              - Description: Get the current weather details for a specified latitude and longitude, including current temperature, today's maximum temperature, and humidity level.
+                Name: getCurrentWeather
+                Parameters:
+                  latitude:
+                    Description: "Latitude of the location for which current weather is requested"
+                    Required: true
+                    Type: number
+                  longitude:
+                    Description: "Longitude of the location for which current weather is requested"
+                    Required: true
+                    Type: number
+
           Description: >
             Location based services:
               - getCoordinates
@@ -293,9 +171,9 @@ Resources:
 
         You may suggest suitable accessories based on the weather too.
 
-        While you will use lattitude and longitude to get details of the location I am in, you must not reply to me with these details.  The latitude and longitude are just for you to work in the background. 
+        While you will use latitude and longitude to get details of the location I am in, you must not reply to me with these details.  The latitude and longitude are just for you to work in the background. 
 
-        If I don't ask a specific question, or I ask a question you don't know the answer to, assume that I am asking for fassion advice and select an outfit based from what you know already.  If you don't know key details, then ask me for them.
+        If I don't ask a specific question, or I ask a question you don't know the answer to, assume that I am asking for fashion advice and select an outfit based from what you know already.  If you don't know key details, then ask me for them.
 
         Make sure your answers are fun!
 
@@ -304,7 +182,7 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       # The role must have the prefix of `AmazonBedrockExecutionRoleForAgents_`
-      RoleName: AmazonBedrockExecutionRoleForAgents_ABC123
+      RoleName: !Sub AmazonBedrockExecutionRoleForAgents_${AWS::StackName}
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -315,7 +193,7 @@ Resources:
             Action:
               - sts:AssumeRole
       Policies:
-        - PolicyName: BedrockAgentFunctionPolicy
+        - PolicyName: !Sub BedrockAgentFunctionPolicy-${AWS::StackName}
           PolicyDocument:
             Version: 2012-10-17
             Statement:
